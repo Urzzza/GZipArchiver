@@ -1,21 +1,20 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 
 namespace GZipTest
 {
-    using System.Linq;
-
     public static class Reader
     {
         private static int breakAfterReadFailuresAttempts = 2;
 
         public static void Read(
-            SafeDictionary<int, Segment> sourceDict, 
             FileStream inputFile,
             bool shouldReadSegmentSize, 
             long bufferSize, 
             long maxCollectionMembers,
+            DataContext dataContext,
             SynchronizationContext synchronizationContext)
         {
             var memoryCounter = new PerformanceCounter("Memory", "Available Bytes");
@@ -24,9 +23,9 @@ namespace GZipTest
             var segmentSize = CalculateSegmentSize(inputFile, shouldReadSegmentSize, bufferSize);
             while (segmentSize != 0)
             {
-                if (sourceDict.Keys.Count() >= maxCollectionMembers || (long)memoryCounter.NextValue() < 2 * bufferSize)
+                if (dataContext.InputData.Keys.Count() >= maxCollectionMembers || (long)memoryCounter.NextValue() < 2 * bufferSize)
                 {
-                    Console.WriteLine($"Almost out of memory. Waiting to read {segmentNumber} segment.");
+                    Trace.TraceWarning($"Almost out of memory. Waiting to read {segmentNumber} segment.");
                     synchronizationContext.ReaderEvent.Reset();
                     synchronizationContext.ReaderEvent.WaitOne();
                     continue;
@@ -42,7 +41,7 @@ namespace GZipTest
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine($"Error while reading file, trying to retry; Segment {segmentNumber}; {e.Message}");
+                    Trace.TraceError($"Error while reading file, trying to retry; Segment {segmentNumber}; {e.Message}");
 
                     if (retryCount++ >= breakAfterReadFailuresAttempts)
                         throw; // Critical error, stopping processing
@@ -54,12 +53,12 @@ namespace GZipTest
                 try
                 {
                     segmentSize = CalculateSegmentSize(inputFile, shouldReadSegmentSize, bufferSize);
-                    sourceDict[segmentNumber] = new Segment(buffer, segmentSize == 0);
+                    dataContext.InputData[segmentNumber] = new Segment(buffer, segmentSize == 0);
                     synchronizationContext.ZipperEvent.Set();
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine($"Error while saving data from file, trying to retry; Segment {segmentNumber}; {e.Message}");
+                    Trace.TraceError($"Error while saving data from file, trying to retry; Segment {segmentNumber}; {e.Message}");
 
                     if (retryCount++ >= breakAfterReadFailuresAttempts)
                         throw; // Critical error, stopping processing
@@ -73,7 +72,7 @@ namespace GZipTest
                 retryCount = 0;
             }
             synchronizationContext.FinishedReading = true;
-            Console.WriteLine("Reader finished processing file.");
+            Trace.TraceInformation("Reader finished processing file.");
         }
 
         private static int CalculateSegmentSize(FileStream stream, bool shouldReadSegmentSize, long bufferSize)

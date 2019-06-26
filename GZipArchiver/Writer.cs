@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 
 namespace GZipTest
@@ -8,9 +9,9 @@ namespace GZipTest
         private static int breakAfterWriteFailuresAttempts = 2;
 
         public static void Write(
-            SafeDictionary<int, Segment> sourceDict, 
             FileStream outputStream,
-            bool shouldWriteSegmetSize, 
+            bool shouldWriteSegmentSize, 
+            DataContext dataContext,
             SynchronizationContext synchronizationContext)
         {
             var segmentNumber = 0;
@@ -19,34 +20,37 @@ namespace GZipTest
             {
                 synchronizationContext.WriterEvent.WaitOne();
                 Segment segment;
-                if (sourceDict.TryRemove(segmentNumber, out segment))
+                if (dataContext.OutputData.TryRemove(segmentNumber, out segment))
                 {
                     try
                     {
-                        Console.WriteLine($"Writing segment {segmentNumber}; Size: {segment.Data.Length}.");
-                        if (shouldWriteSegmetSize)
+                        Trace.TraceInformation($"Writing segment {segmentNumber}; Size: {segment.Data.Length}.");
+                        if (shouldWriteSegmentSize)
                         {
                             outputStream.Write(BitConverter.GetBytes(segment.Data.Length), 0, sizeof(int));
                         }
+
                         outputStream.Write(segment.Data, 0, segment.Data.Length);
                         segment.Data = null;
                         synchronizationContext.ZipperEvent.Set();
+
                         if (segment.IsFinal)
                         {
                             break;
                         }
+
                         segmentNumber++;
                         continue;
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine($"Error while writing data; Segment {segmentNumber}; {e.Message}");
+                        Trace.TraceError($"Error while writing data; Segment {segmentNumber}; {e.Message}");
 
                         if (segment.RetryCount++ >= breakAfterWriteFailuresAttempts)
                             throw; // Critical error, stopping processing
 
                         // return segment back for processing
-                        sourceDict[segmentNumber] = segment;
+                        dataContext.OutputData[segmentNumber] = segment;
                         continue;
                     }
                 }

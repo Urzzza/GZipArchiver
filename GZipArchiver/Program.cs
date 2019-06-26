@@ -1,9 +1,9 @@
-﻿namespace GZipTest
-{
-    using System;
-    using System.IO;
-    using System.IO.Compression;
+﻿using System;
+using System.IO;
+using System.IO.Compression;
 
+namespace GZipTest
+{
     class Program
     {
         static void Main(string[] args)
@@ -50,12 +50,13 @@
             {
                 using (var inputStream = new FileStream(args[1], FileMode.Open))
                 using (var outStream = new FileStream(args[2], FileMode.Create))
-                using (var fileProcessor = new FileProcessor(inputStream, outStream, compressionMode))
+                using (var fileProcessor = new GZipArchiver(inputStream, outStream, compressionMode))
                     fileProcessor.Process();
             }
             catch (Exception e)
             {
                 Console.WriteLine($"Failed to process. Please restart the application. {e.Message}");
+                Environment.Exit(1);
             }
 
         }
@@ -66,6 +67,4 @@
                    "GZipTest.exe compress/decompress [inputFile] [outputFile]";
         }
     }
-
-   
 }

@@ -1,9 +1,8 @@
 ﻿using System.Linq;
+using System.Collections.Generic;
 
 namespace GZipTest
 {
-    using System.Collections.Generic;
-
     public class SafeDictionary<TKey, TValue>
     {
         private readonly object lockObj = new object();
@@ -35,14 +34,6 @@ namespace GZipTest
                 {
                     return dictionary.Keys.ToList();
                 }
-            }
-        }
-
-        public bool TryGetValue(TKey key, out TValue value)
-        {
-            lock (lockObj)
-            {
-                return dictionary.TryGetValue(key, out value);
             }
         }
 
