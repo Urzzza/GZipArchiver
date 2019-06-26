@@ -4,12 +4,11 @@ using System.IO;
 using System.IO.Compression;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace GZipTest.Tests
+namespace GZipArchiver.Tests
 {
     [TestClass]
     public class GZipArchiverTests
     {
-        private readonly Random rand = new Random();
 
         [DataTestMethod]
         [DataRow(1024 * 1024)] // 1 mb
@@ -18,30 +17,8 @@ namespace GZipTest.Tests
         [DataRow(16L * 1024 * 1024 * 1024)] // 16 Gb
         public void TestFile(long fileSize)
         {
-            var bufferSize = 4 * 1024;
-            var inputFilename = $"{fileSize}.input";
-
-            var buffer = new byte[bufferSize];
-
-            if (!File.Exists(inputFilename))
-            {
-                rand.NextBytes(buffer);
-                long alreadyWritten = 0;
-                using (var file = File.Create(inputFilename))
-                {
-                    while (alreadyWritten < fileSize)
-                    {
-                        file.Write(buffer, 0, bufferSize);
-                        alreadyWritten += bufferSize;
-                    }
-                }
-            }
-            else
-            {
-                using (var file = File.OpenRead(inputFilename))
-                    file.Read(buffer, 0, bufferSize);
-            }
-
+            var buffer = FileGenerator.CreateOrReadCyclicFile(fileSize);
+            var inputFilename = FileGenerator.GetInputFileName(fileSize);
             var compressedFileName = $"{fileSize}compressed.test";
             var decompressedFileName = $"{fileSize}decompressed.test";
 
@@ -73,14 +50,14 @@ namespace GZipTest.Tests
 
                 if (fileSize <= 100 * 1024 * 1024)  // takes way too much time for larger files
                 {
-                    var newData = new byte[bufferSize];
+                    var newData = new byte[buffer.Length];
                     long alreadyChecked = 0;
 
                     while (alreadyChecked < file.Length)
                     {
-                        file.Read(newData, 0, bufferSize);
+                        file.Read(newData, 0, buffer.Length);
                         CollectionAssert.AreEqual(buffer, newData);
-                        alreadyChecked += bufferSize;
+                        alreadyChecked += buffer.Length;
                     }
                 }
             }

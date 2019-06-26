@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
-namespace GZipTest
+namespace GZipArchiver
 {
     public static class Reader
     {

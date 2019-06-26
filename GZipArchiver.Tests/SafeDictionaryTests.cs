@@ -1,7 +1,7 @@
 ﻿using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace GZipTest.Tests
+namespace GZipArchiver.Tests
 {
     [TestClass]
     public class SafeDictionaryTests

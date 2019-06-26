@@ -1,4 +1,4 @@
-﻿namespace GZipTest
+﻿namespace GZipArchiver
 {
     public class Segment
     {

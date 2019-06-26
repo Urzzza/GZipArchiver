@@ -5,7 +5,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 
-namespace GZipTest
+namespace GZipArchiver
 {
     public static class Zipper
     {

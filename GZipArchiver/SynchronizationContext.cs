@@ -1,6 +1,6 @@
 ﻿using System.Threading;
 
-namespace GZipTest
+namespace GZipArchiver
 {
     public class SynchronizationContext
     {

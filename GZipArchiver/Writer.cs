@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 
-namespace GZipTest
+namespace GZipArchiver
 {
     public static class Writer
     {

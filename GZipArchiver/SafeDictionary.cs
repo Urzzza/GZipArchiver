@@ -1,7 +1,7 @@
 ﻿using System.Linq;
 using System.Collections.Generic;
 
-namespace GZipTest
+namespace GZipArchiver
 {
     public class SafeDictionary<TKey, TValue>
     {
