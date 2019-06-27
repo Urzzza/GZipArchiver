@@ -75,7 +75,7 @@ namespace GZipArchiver
             Trace.TraceInformation("Reader finished processing file.");
         }
 
-        private static int CalculateSegmentSize(FileStream stream, bool shouldReadSegmentSize, long bufferSize)
+        private static int CalculateSegmentSize(Stream stream, bool shouldReadSegmentSize, long bufferSize)
         {
             var segmentSize = stream.Length - stream.Position <= bufferSize
                     ? (int) (stream.Length - stream.Position)

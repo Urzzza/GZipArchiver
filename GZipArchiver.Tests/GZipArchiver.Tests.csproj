@@ -63,6 +63,8 @@
     <Compile Include="SafeDictionaryTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="GZipArchiverTests.cs" />
+    <Compile Include="WriterTests.cs" />
+    <Compile Include="ZipperTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\GZipArchiver\GZipArchiver.csproj">

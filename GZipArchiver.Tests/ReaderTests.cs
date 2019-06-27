@@ -20,8 +20,15 @@ namespace GZipArchiver.Tests
             {
                 Reader.Read(file, false, buffer.Length, 1050, dataContext, synchronizationContext);
             }
-            
-            Assert.AreEqual(fileSize / buffer.Length, dataContext.InputData.Keys.Count());
+
+            var expectedSegments = fileSize / buffer.Length;
+            Assert.AreEqual(expectedSegments, dataContext.InputData.Keys.Count());
+            for (var i = 0; i < expectedSegments - 1; i++)
+            {
+                CollectionAssert.AreEqual(buffer, dataContext.InputData[i].Data);
+                Assert.IsFalse(dataContext.InputData[i].IsFinal);
+            }
+            Assert.IsTrue(dataContext.InputData[expectedSegments - 1].IsFinal);
         }
     }
 }

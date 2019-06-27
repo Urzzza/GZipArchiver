@@ -63,7 +63,7 @@ namespace GZipArchiver
 
         private static string GetUsage()
         {
-            return "Usage:\n" +
+            return "Usage:" + Environment.NewLine + 
                    "GZipTest.exe compress/decompress [inputFile] [outputFile]";
         }
     }
