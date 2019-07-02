@@ -5,6 +5,8 @@ using System.Linq;
 
 namespace GZipArchiver
 {
+    using System.Threading;
+
     public static class Reader
     {
         private static int breakAfterReadFailuresAttempts = 2;
@@ -71,22 +73,23 @@ namespace GZipArchiver
                 segmentNumber++;
                 retryCount = 0;
             }
+
             synchronizationContext.FinishedReading = true;
             Trace.TraceInformation("Reader finished processing file.");
         }
 
         private static int CalculateSegmentSize(Stream stream, bool shouldReadSegmentSize, long bufferSize)
         {
-            var segmentSize = stream.Length - stream.Position <= bufferSize
+            if (shouldReadSegmentSize)
+            {
+                var size = new byte[sizeof(int)];
+                stream.Read(size, 0, sizeof(int));
+                return BitConverter.ToInt32(size, 0);
+            }
+
+            return stream.Length - stream.Position <= bufferSize
                     ? (int) (stream.Length - stream.Position)
                     : (int) bufferSize;
-            if (!shouldReadSegmentSize || segmentSize == 0)
-            {
-                return segmentSize;
-            }
-            var size = new byte[sizeof(int)];
-            stream.Read(size, 0, sizeof(int));
-            return BitConverter.ToInt32(size, 0);
         }
     }
 }

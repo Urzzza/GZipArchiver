@@ -9,12 +9,12 @@ namespace GZipArchiver.Tests
     [TestClass]
     public class GZipArchiverTests
     {
-
         [DataTestMethod]
         [DataRow(1024 * 1024)] // 1 mb
         [DataRow(100 * 1024 * 1024)] // 100 mb
         [DataRow(1024 * 1024 * 1024)] // 1 Gb
         [DataRow(16L * 1024 * 1024 * 1024)] // 16 Gb
+        [DataRow(32L * 1024 * 1024 * 1024)] // 16 Gb
         public void TestFile(long fileSize)
         {
             var buffer = FileGenerator.CreateOrReadCyclicFile(fileSize);
@@ -48,17 +48,14 @@ namespace GZipArchiver.Tests
             {
                 Assert.AreEqual(fileSize, file.Length);
 
-                if (fileSize <= 100 * 1024 * 1024)  // takes way too much time for larger files
-                {
-                    var newData = new byte[buffer.Length];
-                    long alreadyChecked = 0;
+                var newData = new byte[buffer.Length];
+                long alreadyChecked = 0;
 
-                    while (alreadyChecked < file.Length)
-                    {
-                        file.Read(newData, 0, buffer.Length);
-                        CollectionAssert.AreEqual(buffer, newData);
-                        alreadyChecked += buffer.Length;
-                    }
+                while (alreadyChecked < file.Length && alreadyChecked <= 100 * 1024 * 1024)
+                {
+                    file.Read(newData, 0, buffer.Length);
+                    CollectionAssert.AreEqual(buffer, newData);
+                    alreadyChecked += buffer.Length;
                 }
             }
         }

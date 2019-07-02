@@ -7,16 +7,12 @@ using System.Threading;
 
 namespace GZipArchiver
 {
-
-
     public class GZipArchiver : IDisposable
     {
-        private const int DefaultBufferSize = 32 * 1024 * 1024; 
-
         private readonly FileStream inputStream;
         private readonly FileStream outputStream;
         private readonly CompressionMode mode;
-        private readonly int threadLimit = Environment.ProcessorCount < 3 ? 1 : Environment.ProcessorCount - 2;
+        private readonly int workerThreadLimit = Environment.ProcessorCount < 3 ? 1 : Environment.ProcessorCount - 2;
 
         private List<Thread> workerThreads;
         private Thread readerThread;
@@ -28,22 +24,22 @@ namespace GZipArchiver
             this.outputStream = outputStream;
             this.mode = mode;
 
-            workerThreads = new List<Thread>(threadLimit);
+            workerThreads = new List<Thread>(workerThreadLimit);
         }
 
         public void Process()
         {
-            var bufferSize = Math.Min(inputStream.Length, DefaultBufferSize); // file size or buffer size
             var freeMemory = (long)new PerformanceCounter("Memory", "Available Bytes").NextValue();
             if (!Environment.Is64BitProcess)
             {
                 /// https://blogs.msdn.microsoft.com/webtopics/2009/05/22/troubleshooting-system-outofmemoryexceptions-in-asp-net/
                 /// Reducing memory and buffer size for x86. No optimal memory usage can be achived on x86 and current RAM sizes
                 freeMemory = Math.Min(freeMemory, 800 * 1024 * 1024);
-                bufferSize = Math.Min(bufferSize, DefaultBufferSize);  // file size or 1 mb
             }
 
-            var availableMemoryForCollection = freeMemory * 0.40; // managing 2 collections, so 100% - 20% (for safety) / 2
+            var bufferSize = Math.Min(freeMemory / workerThreadLimit / 2, inputStream.Length / workerThreadLimit);
+            bufferSize = Math.Min(bufferSize, 256 * 1024 * 1024); // reading/writing more than 256 produces more delays
+            var availableMemoryForCollection = freeMemory * 0.45; // managing 2 collections, so 100% - 10% (for safety) / 2
 
             var maxCollectionMembers = (long)availableMemoryForCollection / bufferSize;
             if (maxCollectionMembers < 1)
@@ -66,7 +62,7 @@ namespace GZipArchiver
                         synchronizationContext));
             readerThread.Start();
 
-            for (var i = 0; i < threadLimit; i++)
+            for (var i = 0; i < workerThreadLimit; i++)
             {
                 var workerThread = new Thread(
                     () => 
