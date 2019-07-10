@@ -14,19 +14,23 @@ namespace GZipArchiver.Tests
         [DataRow(100 * 1024 * 1024)] // 100 mb
         [DataRow(1024 * 1024 * 1024)] // 1 Gb
         [DataRow(16L * 1024 * 1024 * 1024)] // 16 Gb
-        [DataRow(32L * 1024 * 1024 * 1024)] // 16 Gb
+        [DataRow(32L * 1024 * 1024 * 1024)] // 32 Gb
         public void TestFile(long fileSize)
         {
             var buffer = FileGenerator.CreateOrReadCyclicFile(fileSize);
             var inputFilename = FileGenerator.GetInputFileName(fileSize);
             var compressedFileName = $"{fileSize}compressed.test";
             var decompressedFileName = $"{fileSize}decompressed.test";
+            var inputFileSize = 0L;
 
             var sw = Stopwatch.StartNew();
             using (var input = File.OpenRead(inputFilename))
             using (var output = File.OpenWrite(compressedFileName))
             using (var compressor = new GZipArchiver(input, output, CompressionMode.Compress))
+            {
+                inputFileSize = input.Length;
                 compressor.Process();
+            }
 
             sw.Stop();
             Console.WriteLine($"Compressed in {sw.Elapsed.TotalSeconds} s");
@@ -46,7 +50,7 @@ namespace GZipArchiver.Tests
 
             using (var file = File.OpenRead(decompressedFileName))
             {
-                Assert.AreEqual(fileSize, file.Length);
+                Assert.AreEqual(inputFileSize, file.Length);
 
                 var newData = new byte[buffer.Length];
                 long alreadyChecked = 0;
