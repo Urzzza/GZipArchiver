@@ -19,8 +19,7 @@ namespace GZipArchiver
             while (true)
             {
                 synchronizationContext.WriterEvent.WaitOne();
-                Segment segment;
-                if (dataContext.OutputData.TryRemove(segmentNumber, out segment))
+                if (dataContext.OutputData.TryRemove(segmentNumber, out var segment))
                 {
                     try
                     {
@@ -32,7 +31,6 @@ namespace GZipArchiver
 
                         outputStream.Write(segment.Data, 0, segment.Data.Length);
                         segment.Data = null;
-//                        synchronizationContext.ZipperEvent.Set();
 
                         if (segment.IsFinal)
                         {

@@ -12,7 +12,7 @@ namespace GZipArchiver
         private readonly string inputFileName;
         private readonly string outputFileName;
         private readonly CompressionMode mode;
-        private readonly int workerThreadLimit = Environment.ProcessorCount < 2 ? 1 : Environment.ProcessorCount - 1;
+        private readonly int workerThreadLimit = Environment.ProcessorCount;
 
         private List<Thread> workerThreads;
         private Thread writerThread;
@@ -38,11 +38,11 @@ namespace GZipArchiver
             }
 
             //var bufferSize = Math.Min(freeMemory / workerThreadLimit / 2, inputFileName.Length / workerThreadLimit + workerThreadLimit);
-            var bufferSize = 32L * 1024 * 1024;
+            var bufferSize = 4L * 1024 * 1024;
             Trace.TraceInformation($"Free memory: {freeMemory}; Worker limit: {workerThreadLimit}; Buffer size: {bufferSize}");
 
             bufferSize = Math.Min(bufferSize, 256 * 1024 * 1024); // reading/writing more than 256 produces more delays
-            var availableMemoryForCollection = freeMemory * 0.45; // managing 2 collections, so 100% - 10% (for safety) / 2
+            var availableMemoryForCollection = freeMemory * 0.9; // managing 2 collections, so 100% - 10% (for safety) / 2
             Trace.TraceInformation($"Available Memory For Collection: {availableMemoryForCollection}; Buffer size: {bufferSize}");
 
             var maxCollectionMembers = (long)availableMemoryForCollection / bufferSize;
