@@ -48,9 +48,7 @@ namespace GZipArchiver
 
             try
             {
-                using (var inputStream = new FileStream(args[1], FileMode.Open))
-                using (var outStream = new FileStream(args[2], FileMode.Create))
-                using (var fileProcessor = new GZipArchiver(inputStream, outStream, compressionMode))
+                using (var fileProcessor = new GZipArchiver(args[1], args[2], compressionMode))
                     fileProcessor.Process();
             }
             catch (Exception e)

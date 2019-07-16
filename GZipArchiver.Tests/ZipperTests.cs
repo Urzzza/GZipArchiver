@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO.Compression;
 using System.Linq;
+using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace GZipArchiver.Tests
@@ -11,24 +13,52 @@ namespace GZipArchiver.Tests
         [TestMethod]
         public void TestZipper()
         {
-            var itemsCount = 100;
+            var fileSize = 1024 * 1024;
+            var bufferSize = 32 * 1024;
             var dataContext = new DataContext();
             var synchronizationContext = new SynchronizationContext();
-            var rand = new Random();
+            FileGenerator.CreateOrReadCyclicFile(fileSize);
+            var fileName = FileGenerator.GetInputFileName(fileSize);
+            var segmentProvider = new SegmentProvider(false, bufferSize);
 
-            var buffer = new byte[4 * 1024];
-            rand.NextBytes(buffer);
-            for (int i = 0; i < itemsCount; i++)
+            Zipper.Process(fileName, segmentProvider, CompressionMode.Compress, 10, dataContext, synchronizationContext);
+            Assert.AreEqual(fileSize / bufferSize + 1, dataContext.OutputData.Keys.Count());
+        }
+
+        [TestMethod]
+        public void TestZipper_Concurrency()
+        {
+            var fileSize = 1024 * 1024;
+            var bufferSize = 32 * 1024;
+            var dataContext = new DataContext();
+            var synchronizationContext = new SynchronizationContext();
+            FileGenerator.CreateOrReadCyclicFile(fileSize);
+            var fileName = FileGenerator.GetInputFileName(fileSize);
+            var segmentProvider = new SegmentProvider(false, bufferSize);
+            List<Thread> workerThreads = new List<Thread>();
+            for (var i = 0; i < 3; i++)
             {
-                dataContext.InputData[i] = new Segment(buffer, i == itemsCount - 1);
+                var workerThread = new Thread(
+                    () =>
+                        Zipper.Process(
+                            fileName,
+                            segmentProvider,
+                            CompressionMode.Compress,
+                            10,
+                            dataContext,
+                            synchronizationContext));
+                workerThread.Start();
+                workerThreads.Add(workerThread);
             }
 
-            synchronizationContext.FinishedReading = true;
-            synchronizationContext.ZipperEvent.Set();
+            foreach (var workerThread in workerThreads)
+            {
+                workerThread.Join();
+            }
 
-            Zipper.Process(CompressionMode.Compress, itemsCount + 1, dataContext, synchronizationContext);
-            Assert.AreEqual(itemsCount, dataContext.OutputData.Keys.Count());
-            Assert.AreEqual(0, dataContext.InputData.Keys.Count());
+            var lastElementIndex = fileSize / bufferSize;
+            Assert.AreEqual(lastElementIndex + 1, dataContext.OutputData.Keys.Count());
+            Assert.AreEqual(0, dataContext.OutputData[lastElementIndex].Data.Length);
         }
     }
 }

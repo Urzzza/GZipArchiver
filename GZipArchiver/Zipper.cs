@@ -9,51 +9,58 @@ namespace GZipArchiver
 {
     public static class Zipper
     {
-        private static int breakAfterProcessingFailuresAttempts = 2;
+//        private static int breakAfterProcessingFailuresAttempts = 2;
 
         public static void Process(
+            string fileName,
+            SegmentProvider segmentProvider,
             CompressionMode mode, 
             long maxCollectionSize, 
             DataContext dataContext,
             SynchronizationContext synchronizationContext)
         {
-            while (true)
+            using (var inputStream = new FileStream(fileName, FileMode.Open, FileAccess.Read))
             {
-                synchronizationContext.ZipperEvent.WaitOne();
-                var inputDataKeys = dataContext.InputData.Keys;
-                if (!inputDataKeys.Any() && synchronizationContext.FinishedReading)
+                while (true)
                 {
-                    synchronizationContext.ZipperEvent.Set();
-                    break;
-                }
+                    if (synchronizationContext.FinishedReading)
+                    {
+                        break;
+                    }
 
-                if (!inputDataKeys.Any() || dataContext.OutputData.Keys.Count() >= maxCollectionSize)
-                {
-                    synchronizationContext.ZipperEvent.Reset();
-                    continue;
-                }
-
-                Segment segment;
-                var index = inputDataKeys.Min();
-                if (dataContext.InputData.TryRemove(index, out segment))
-                {
                     try
                     {
-                        Trace.TraceInformation($"Worker {Thread.CurrentThread.GetHashCode()} processing {index} segment.");
-                        dataContext.OutputData[index] = mode == CompressionMode.Compress ? Compress(segment) : Decompress(segment);
-                        segment.Data = null;
-                        synchronizationContext.ReaderEvent.Set();
+                        var indexAndSize = segmentProvider.GetNextIndexAndSize(inputStream);
+                        var index = indexAndSize.Item1;
+                        var size = indexAndSize.Item2;
+
+                        if (size == 0)
+                        {
+                            synchronizationContext.FinishedReading = true;
+                            dataContext.OutputData[index] = new Segment(new byte[0], true);
+                            break;
+                        }
+
+                        Trace.TraceInformation(
+                            $"Worker {Thread.CurrentThread.GetHashCode()} processing {index} segment.");
+                        var buffer = new byte[size];
+                        inputStream.Read(buffer, 0, size);
+
+                        dataContext.OutputData[index] = mode == CompressionMode.Compress
+                            ? Compress(buffer)
+                            : Decompress(buffer);
                         synchronizationContext.WriterEvent.Set();
                     }
                     catch (Exception e)
                     {
-                        Trace.TraceError($"Segment number: {index}; Retry attempt: {segment.RetryCount}; Error: {e.Message}");
+                        Trace.TraceError($" Error: {e.Message}");
+                        throw;
 
-                        if (segment.RetryCount++ >= breakAfterProcessingFailuresAttempts)
-                            throw; // Critical error, stopping processing
-
-                        // return segment back for processing
-                        dataContext.InputData[index] = segment;
+//                        if (segment.RetryCount++ >= breakAfterProcessingFailuresAttempts)
+//                            throw; // Critical error, stoppingprocessing
+//
+//                        // return segment back for processing
+//                        dataContext.InputData[index] = segment;
                     }
                 }
             }
@@ -61,34 +68,34 @@ namespace GZipArchiver
             Trace.TraceInformation($"Worker {Thread.CurrentThread.GetHashCode()} stopped processing data.");
         }
 
-        private static Segment Compress(Segment segment)
+        private static Segment Compress(byte[] data)
         {
             using (var outMemoryStream = new MemoryStream())
             {
                 using (var gZipStream = new GZipStream(outMemoryStream, CompressionMode.Compress))
                 {
-                    gZipStream.Write(segment.Data, 0, segment.Data.Length);
+                    gZipStream.Write(data, 0, data.Length);
                 }
-                return new Segment(outMemoryStream.ToArray(), segment.IsFinal);
+                return new Segment(outMemoryStream.ToArray());
             }
         }
 
-        private static Segment Decompress(Segment segment)
+        private static Segment Decompress(byte[] data)
         {
-            using (var inMemoryStream = new MemoryStream(segment.Data))
+            using (var inMemoryStream = new MemoryStream(data))
             {
                 using (var gZipStream = new GZipStream(inMemoryStream, CompressionMode.Decompress))
                 using (var outMemoryStream = new MemoryStream())
                 {
                     int read;
-                    var buffer = new byte[segment.Data.Length];
+                    var buffer = new byte[data.Length];
 
-                    while ((read = gZipStream.Read(buffer, 0, segment.Data.Length)) != 0)
+                    while ((read = gZipStream.Read(buffer, 0, data.Length)) != 0)
                     {
                         outMemoryStream.Write(buffer, 0, read);
                     }
 
-                    return new Segment(outMemoryStream.ToArray(), segment.IsFinal);
+                    return new Segment(outMemoryStream.ToArray());
                 }
             }
         }

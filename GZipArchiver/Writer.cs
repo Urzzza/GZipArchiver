@@ -32,7 +32,7 @@ namespace GZipArchiver
 
                         outputStream.Write(segment.Data, 0, segment.Data.Length);
                         segment.Data = null;
-                        synchronizationContext.ZipperEvent.Set();
+//                        synchronizationContext.ZipperEvent.Set();
 
                         if (segment.IsFinal)
                         {
