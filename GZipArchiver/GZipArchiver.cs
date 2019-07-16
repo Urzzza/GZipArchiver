@@ -37,7 +37,6 @@ namespace GZipArchiver
                 freeMemory = Math.Min(freeMemory, 800 * 1024 * 1024);
             }
 
-            //var bufferSize = Math.Min(freeMemory / workerThreadLimit / 2, inputFileName.Length / workerThreadLimit + workerThreadLimit);
             var bufferSize = 4L * 1024 * 1024;
             Trace.TraceInformation($"Free memory: {freeMemory}; Worker limit: {workerThreadLimit}; Buffer size: {bufferSize}");
 

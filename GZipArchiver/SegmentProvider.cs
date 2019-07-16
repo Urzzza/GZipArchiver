@@ -6,10 +6,9 @@ namespace GZipArchiver
     public class SegmentProvider
     {
         private readonly bool shouldReadSegmentSize;
-        private readonly long bufferSize;
         private readonly object lockObj = new object();
 
-
+        private long bufferSize;
         private long currentOffset = 0;
         private int currentSegmentIndex = 0;
 
@@ -41,14 +40,21 @@ namespace GZipArchiver
         {
             if (shouldReadSegmentSize)
             {
-                var size = new byte[sizeof(int)];
-                stream.Read(size, 0, sizeof(int));
-                return BitConverter.ToInt32(size, 0);
+                var segmentSize = new byte[sizeof(int)];
+                stream.Read(segmentSize, 0, sizeof(int));
+                return BitConverter.ToInt32(segmentSize, 0);
             }
 
-            return stream.Length - stream.Position <= bufferSize
+            var size = stream.Length - stream.Position <= bufferSize
                 ? (int)(stream.Length - stream.Position)
                 : (int)bufferSize;
+
+            if (size == bufferSize && bufferSize <= 32L * 1024 * 1024)
+            {
+                bufferSize *= 2;
+            }
+
+            return size;
         }
     }
 }
