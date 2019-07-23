@@ -9,8 +9,6 @@ namespace GZipArchiver
 {
     public static class Zipper
     {
-//        private static int breakAfterProcessingFailuresAttempts = 2;
-
         public static void Process(
             string fileName,
             SegmentProvider segmentProvider,
@@ -26,6 +24,16 @@ namespace GZipArchiver
                     if (synchronizationContext.FinishedReading)
                     {
                         break;
+                    }
+
+                    synchronizationContext.ZipperEvent.WaitOne();
+
+                    if (dataContext.OutputData.Keys.Count() >= maxCollectionSize)
+                    {
+                        // Too many data is already in queue waiting to be written to output. 
+                        // Zipper threads should be stopped to release disk and processor load.
+                        synchronizationContext.ZipperEvent.Reset();
+                        continue;
                     }
 
                     try
@@ -55,12 +63,6 @@ namespace GZipArchiver
                     {
                         Trace.TraceError($" Error: {e.Message}");
                         throw;
-
-//                        if (segment.RetryCount++ >= breakAfterProcessingFailuresAttempts)
-//                            throw; // Critical error, stoppingprocessing
-//
-//                        // return segment back for processing
-//                        dataContext.InputData[index] = segment;
                     }
                 }
             }

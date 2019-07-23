@@ -45,16 +45,9 @@ namespace GZipArchiver
                 return BitConverter.ToInt32(segmentSize, 0);
             }
 
-            var size = stream.Length - stream.Position <= bufferSize
+            return stream.Length - stream.Position <= bufferSize
                 ? (int)(stream.Length - stream.Position)
                 : (int)bufferSize;
-
-            if (size == bufferSize && bufferSize <= 32L * 1024 * 1024)
-            {
-                bufferSize *= 2;
-            }
-
-            return size;
         }
     }
 }

@@ -29,26 +29,16 @@ namespace GZipArchiver
         public void Process()
         {
             var freeMemory = (long)new PerformanceCounter("Memory", "Available Bytes").NextValue();
-            if (!Environment.Is64BitProcess)
-            {
-                Trace.TraceInformation($"x86, Free memory: {freeMemory}");
-                /// https://blogs.msdn.microsoft.com/webtopics/2009/05/22/troubleshooting-system-outofmemoryexceptions-in-asp-net/
-                /// Reducing memory and buffer size for x86. No optimal memory usage can be achived on x86 and current RAM sizes
-                freeMemory = Math.Min(freeMemory, 800 * 1024 * 1024);
-            }
+            freeMemory = Math.Min(freeMemory, 800 * 1024 * 1024); // 800Mb is already 200 segments of data in queue, zippers should be stopped
 
             var bufferSize = 4L * 1024 * 1024;
             Trace.TraceInformation($"Free memory: {freeMemory}; Worker limit: {workerThreadLimit}; Buffer size: {bufferSize}");
 
-            bufferSize = Math.Min(bufferSize, 256 * 1024 * 1024); // reading/writing more than 256 produces more delays
-            var availableMemoryForCollection = freeMemory * 0.9; // managing 2 collections, so 100% - 10% (for safety) / 2
-            Trace.TraceInformation($"Available Memory For Collection: {availableMemoryForCollection}; Buffer size: {bufferSize}");
-
-            var maxCollectionMembers = (long)availableMemoryForCollection / bufferSize;
-            if (maxCollectionMembers < 1)
+            var maxCollectionMembers = freeMemory / bufferSize;
+            if (maxCollectionMembers < 1) // rare case
             {
                 maxCollectionMembers = 1;
-                bufferSize = (long)Math.Min(inputFileName.Length, availableMemoryForCollection);
+                bufferSize = Math.Min(inputFileName.Length, freeMemory);
             }
 
             var dataContext = new DataContext();

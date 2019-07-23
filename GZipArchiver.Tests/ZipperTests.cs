@@ -20,7 +20,7 @@ namespace GZipArchiver.Tests
             var fileName = FileGenerator.GetInputFileName(fileSize);
             var segmentProvider = new SegmentProvider(false, bufferSize);
 
-            Zipper.Process(fileName, segmentProvider, CompressionMode.Compress, 10, dataContext, synchronizationContext);
+            Zipper.Process(fileName, segmentProvider, CompressionMode.Compress, 100, dataContext, synchronizationContext);
             Assert.AreEqual(fileSize / bufferSize + 1, dataContext.OutputData.Keys.Count());
         }
 
@@ -43,7 +43,7 @@ namespace GZipArchiver.Tests
                             fileName,
                             segmentProvider,
                             CompressionMode.Compress,
-                            10,
+                            100,
                             dataContext,
                             synchronizationContext));
                 workerThread.Start();

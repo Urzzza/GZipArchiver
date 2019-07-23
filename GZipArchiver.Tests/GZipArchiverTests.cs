@@ -10,10 +10,10 @@ namespace GZipArchiver.Tests
     public class GZipArchiverTests
     {
         [DataTestMethod]
-//        [DataRow(1024 * 1024)] // 1 mb
-//        [DataRow(100 * 1024 * 1024)] // 100 mb
-//        [DataRow(1024 * 1024 * 1024)] // 1 Gb
-//        [DataRow(16L * 1024 * 1024 * 1024)] // 16 Gb
+        [DataRow(1024 * 1024)] // 1 mb
+        [DataRow(100 * 1024 * 1024)] // 100 mb
+        [DataRow(1024 * 1024 * 1024)] // 1 Gb
+        [DataRow(16L * 1024 * 1024 * 1024)] // 16 Gb
         [DataRow(32L * 1024 * 1024 * 1024)] // 32 Gb
         public void TestFile(long fileSize)
         {
