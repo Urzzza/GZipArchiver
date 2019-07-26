@@ -9,19 +9,18 @@ namespace GZipArchiver
 {
     public class GZipArchiver : IDisposable
     {
-        private readonly FileStream inputStream;
-        private readonly FileStream outputStream;
+        private readonly string inputFileName;
+        private readonly string outputFileName;
         private readonly CompressionMode mode;
-        private readonly int workerThreadLimit = Environment.ProcessorCount < 3 ? 1 : Environment.ProcessorCount - 2;
+        private readonly int workerThreadLimit = Environment.ProcessorCount;
 
         private List<Thread> workerThreads;
-        private Thread readerThread;
         private Thread writerThread;
- 
-        public GZipArchiver(FileStream inputStream, FileStream outputStream, CompressionMode mode)
+        
+        public GZipArchiver(string inputFileName, string outputFileName, CompressionMode mode)
         {
-            this.inputStream = inputStream;
-            this.outputStream = outputStream;
+            this.inputFileName = inputFileName;
+            this.outputFileName = outputFileName;
             this.mode = mode;
 
             workerThreads = new List<Thread>(workerThreadLimit);
@@ -30,43 +29,29 @@ namespace GZipArchiver
         public void Process()
         {
             var freeMemory = (long)new PerformanceCounter("Memory", "Available Bytes").NextValue();
-            if (!Environment.Is64BitProcess)
-            {
-                /// https://blogs.msdn.microsoft.com/webtopics/2009/05/22/troubleshooting-system-outofmemoryexceptions-in-asp-net/
-                /// Reducing memory and buffer size for x86. No optimal memory usage can be achived on x86 and current RAM sizes
-                freeMemory = Math.Min(freeMemory, 800 * 1024 * 1024);
-            }
+            freeMemory = Math.Min(freeMemory, 800 * 1024 * 1024); // 800Mb is already 200 segments of data in queue, zippers should be stopped
 
-            var bufferSize = Math.Min(freeMemory / workerThreadLimit / 2, inputStream.Length / workerThreadLimit);
-            bufferSize = Math.Min(bufferSize, 256 * 1024 * 1024); // reading/writing more than 256 produces more delays
-            var availableMemoryForCollection = freeMemory * 0.45; // managing 2 collections, so 100% - 10% (for safety) / 2
+            var bufferSize = 4L * 1024 * 1024;
+            Trace.TraceInformation($"Free memory: {freeMemory}; Worker limit: {workerThreadLimit}; Buffer size: {bufferSize}");
 
-            var maxCollectionMembers = (long)availableMemoryForCollection / bufferSize;
-            if (maxCollectionMembers < 1)
+            var maxCollectionMembers = freeMemory / bufferSize;
+            if (maxCollectionMembers < 1) // rare case
             {
                 maxCollectionMembers = 1;
-                bufferSize = (long)Math.Min(inputStream.Length, availableMemoryForCollection);
+                bufferSize = Math.Min(inputFileName.Length, freeMemory);
             }
 
             var dataContext = new DataContext();
             var synchronizationContext = new SynchronizationContext();
-
-            readerThread = new Thread(
-                () => 
-                    Reader.Read(
-                        inputStream, 
-                        mode == CompressionMode.Decompress, 
-                        bufferSize, 
-                        maxCollectionMembers,
-                        dataContext,
-                        synchronizationContext));
-            readerThread.Start();
-
+            var segmentProvider = new SegmentProvider(mode == CompressionMode.Decompress, bufferSize);
+           
             for (var i = 0; i < workerThreadLimit; i++)
             {
                 var workerThread = new Thread(
                     () => 
                         Zipper.Process(
+                            inputFileName,
+                            segmentProvider,
                             mode, 
                             maxCollectionMembers, 
                             dataContext,
@@ -75,20 +60,22 @@ namespace GZipArchiver
                 workerThreads.Add(workerThread);
             }
 
-            writerThread = new Thread(
-                () => 
-                    Writer.Write(
-                        outputStream, 
-                        mode == CompressionMode.Compress, 
-                        dataContext,
-                        synchronizationContext));
-            writerThread.Start();
-            writerThread.Join();
+            using (var outStream = new FileStream(this.outputFileName, FileMode.Create))
+            {
+                writerThread = new Thread(
+                    () =>
+                        Writer.Write(
+                            outStream,
+                            mode == CompressionMode.Compress,
+                            dataContext,
+                            synchronizationContext));
+                writerThread.Start();
+                writerThread.Join();
+            }
         }
 
         public void Dispose()
         {
-            readerThread?.Abort();
             writerThread?.Abort();
             workerThreads.ForEach(x => x?.Abort());
         }

@@ -19,8 +19,7 @@ namespace GZipArchiver
             while (true)
             {
                 synchronizationContext.WriterEvent.WaitOne();
-                Segment segment;
-                if (dataContext.OutputData.TryRemove(segmentNumber, out segment))
+                if (dataContext.OutputData.TryRemove(segmentNumber, out var segment))
                 {
                     try
                     {

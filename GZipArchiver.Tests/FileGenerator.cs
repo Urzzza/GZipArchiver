@@ -1,39 +1,33 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
+using System.Text;
 
 namespace GZipArchiver.Tests
 {
     public static class FileGenerator
     {
-        private static Random rand = new Random();
-        private static int bufferSize = 4 * 1024;
-
         public static byte[] CreateOrReadCyclicFile(long fileSize)
         {
             var inputFilename = GetInputFileName(fileSize);
+            var book = Encoding.UTF8.GetBytes(Properties.Resources.book);
 
-            var buffer = new byte[bufferSize];
+            var bufferSize = (int)Math.Min(book.Length, fileSize);
 
             if (!File.Exists(inputFilename))
             {
-                rand.NextBytes(buffer);
                 long alreadyWritten = 0;
                 using (var file = File.Create(inputFilename))
                 {
                     while (alreadyWritten < fileSize)
                     {
-                        file.Write(buffer, 0, bufferSize);
+                        file.Write(book, 0, bufferSize);
                         alreadyWritten += bufferSize;
                     }
                 }
             }
-            else
-            {
-                using (var file = File.OpenRead(inputFilename))
-                    file.Read(buffer, 0, bufferSize);
-            }
-
-            return buffer;
+            
+            return fileSize > book.Length ? book : book.Take(bufferSize).ToArray();
         }
 
         public static string GetInputFileName(long fileSize) => $"{fileSize}.input";
